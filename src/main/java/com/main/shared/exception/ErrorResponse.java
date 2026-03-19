@@ -1,8 +1,7 @@
 package com.main.shared.exception;
 
 import lombok.Data;
-import lombok.Getter;
-import lombok.Setter;
+
 
 @Data
 public class ErrorResponse {

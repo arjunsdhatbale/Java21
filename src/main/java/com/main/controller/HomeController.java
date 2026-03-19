@@ -10,7 +10,7 @@ public class HomeController {
         @ResponseBody
         @GetMapping("/test")
         public String home(){
-            System.out.println("Wellcome to Arjun Dhatbale.");
-            return "Wellcome to Arjun Dhatbale.";
+            System.out.println("Welcome to Arjun Chatbase.");
+            return "Welcome to Arjun Chatbase.";
         }
 }
