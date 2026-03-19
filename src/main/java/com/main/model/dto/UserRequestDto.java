@@ -21,8 +21,8 @@ public class UserRequestDto {
     @Email(message = "Invalid email format")
     private String email;
 
-    @NotBlank(message = "Password is required")
-    @Size(min = 8, message = "Password must be at least 8 characters")
+
+
     private String password;
 
     @NotBlank(message = "Phone is required")
