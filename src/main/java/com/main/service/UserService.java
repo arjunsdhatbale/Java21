@@ -1,4 +1,4 @@
-package com.main.serviice;
+package com.main.service;
 
 
 import com.main.model.dto.UserRequestDto;
@@ -12,5 +12,5 @@ public interface UserService {
     List<UserResponseDto> getAllUsers();
     UserResponseDto updateUser(Long id, UserRequestDto dto);
     void deleteUser(Long id);
-    List<UserResponseDto> searchUsers(String keyword);
+
 }

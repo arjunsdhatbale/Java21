@@ -1,4 +1,4 @@
-package com.main.serviice;
+package com.main.service;
 
 
 
@@ -17,7 +17,7 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
-public class UserServiceImpl implements UserService {
+public class UserServiceImpl implements UserService, SearchService<UserResponseDto> {
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
@@ -71,8 +71,10 @@ public class UserServiceImpl implements UserService {
         userRepository.save(user);
     }
 
+
+
     @Override
-    public List<UserResponseDto> searchUsers(String keyword) {
+    public List<UserResponseDto> search(String keyword) {
         return userRepository.searchUsers(keyword)
                 .stream()
                 .map(userMapper::toDto)

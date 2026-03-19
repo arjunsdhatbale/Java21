@@ -2,7 +2,8 @@ package com.main.controller;
 
 import com.main.model.dto.UserRequestDto;
 import com.main.model.dto.UserResponseDto;
-import com.main.serviice.UserService;
+import com.main.service.UserService;
+import com.main.service.UserServiceImpl;
 import com.main.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +22,7 @@ public class UserController {
 
     Logger logger = LoggerFactory.getLogger(UserController.class);
     private final UserService userService;
-
+    private final UserServiceImpl userServiceImpl;
     @PostMapping
     public ResponseEntity<ApiResponse<UserResponseDto>> createUser(@Valid @RequestBody UserRequestDto dto) {
         logger.info("Request received to create user.");
@@ -58,6 +59,6 @@ public class UserController {
     @GetMapping("/search")
     public ResponseEntity<ApiResponse<List<UserResponseDto>>> searchUsers(@RequestParam String keyword) {
         logger.info("Request received to seaarch user by keyword : {}.", keyword);
-        return ResponseEntity.ok(ApiResponse.success("Search results", userService.searchUsers(keyword)));
+        return ResponseEntity.ok(ApiResponse.success("Search results", userServiceImpl.search(keyword)));
     }
 }
