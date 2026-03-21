@@ -13,6 +13,6 @@ public interface ProductService {
     List<ProductResponseDto> getProductsByCategory(String category);
     ProductResponseDto updateProduct(Long id, ProductRequestDto dto);
     void deleteProduct(Long id);
-
+// df
     List<String> getAllCategories();
 }
