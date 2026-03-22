@@ -1,0 +1,70 @@
+version: '3.8'
+
+services:
+
+  # ── MySQL Database ──────────────────────────
+  mysql:
+    image: mysql:8.0
+    container_name: demo-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: demo
+      MYSQL_USER: demouser
+      MYSQL_PASSWORD: demopass
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - demo-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── Spring Boot Backend ─────────────────────
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: demo-backend
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/demo?useSSL=false&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: demouser
+      SPRING_DATASOURCE_PASSWORD: demopass
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+      SPRING_JPA_SHOW_SQL: "false"
+      SERVER_PORT: 8080
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - demo-network
+
+  # ── Angular Frontend ────────────────────────
+  frontend:
+    build:
+      context: ../Demo        # ← path to Angular project
+      dockerfile: Dockerfile
+    container_name: demo-frontend
+    restart: always
+    ports:
+      - "4200:80"
+    depends_on:
+      - backend
+    networks:
+      - demo-network
+
+# ── Volumes ─────────────────────────────────────
+volumes:
+  mysql-data:
+
+# ── Networks ─────────────────────────────────────
+networks:
+  demo-network:
+    driver: bridge
