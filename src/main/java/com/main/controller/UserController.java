@@ -4,6 +4,7 @@ import com.main.model.dto.UserRequestDto;
 import com.main.model.dto.UserResponseDto;
 import com.main.service.UserService;
 import com.main.service.UserServiceImpl;
+import com.main.shared.pagination.annotation.CursorPaginated;
 import com.main.shared.response.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -37,7 +38,8 @@ public class UserController {
     }
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<UserResponseDto>>> getAllUsers() {
+    @CursorPaginated(defaultSize = 2, sortField = "createdAt", sortDir = "DESC")
+    public ResponseEntity<ApiResponse<List<UserResponseDto>>> getAllUsers() throws Throwable {
         logger.info("Request received to get all users.");
         return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", userService.getAllUsers()));
     }

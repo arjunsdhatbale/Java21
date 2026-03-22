@@ -9,6 +9,7 @@ import com.main.model.entity.User;
 import com.main.repo.UserRepository;
 import com.main.shared.exception.BusinessException;
 import com.main.shared.exception.ResourceNotFoundException;
+import com.main.shared.pagination.helper.CursorQueryHelper;
 import lombok.RequiredArgsConstructor;
 
 import org.springframework.stereotype.Service;
@@ -21,7 +22,7 @@ public class UserServiceImpl implements UserService, SearchService<UserResponseD
 
     private final UserRepository userRepository;
     private final UserMapper userMapper;
-
+    private final CursorQueryHelper cursorQueryHelper;
 
 
 
@@ -43,8 +44,8 @@ public class UserServiceImpl implements UserService, SearchService<UserResponseD
     }
 
     @Override
-    public List<UserResponseDto> getAllUsers() {
-        return userRepository.findAll()
+    public List<UserResponseDto> getAllUsers() throws Throwable {
+        return  cursorQueryHelper.findWithCursor(User.class, null)
                 .stream()
                 .map(userMapper::toDto)
                 .toList();
