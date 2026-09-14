@@ -14,5 +14,6 @@ import lombok.Setter;
 public class RowError {
     private int rowNumber;
     private String email;
+    private String identifier;
     private String reason;
 }

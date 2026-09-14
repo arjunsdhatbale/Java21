@@ -1,7 +1,11 @@
 package com.main.controller;
 
+import com.main.model.dto.JobStatusResponse;
 import com.main.model.dto.ProductRequestDto;
 import com.main.model.dto.ProductResponseDto;
+import com.main.model.dto.RowError;
+import com.main.model.dto.UploadResponse;
+import com.main.service.ProductBulkUploadService;
 import com.main.service.ProductService;
 import com.main.service.ProductServiceImpl;
 import com.main.shared.response.ApiResponse;
@@ -10,8 +14,10 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -22,6 +28,7 @@ public class ProductController {
     Logger logger = LoggerFactory.getLogger(ProductController.class);
     private final ProductService productService;
     private final ProductServiceImpl productServiceImpl;
+    private final ProductBulkUploadService productBulkUploadService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<ProductResponseDto>> createProduct(
@@ -83,5 +90,30 @@ public class ProductController {
             @RequestParam String keyword) {
         return ResponseEntity.ok(ApiResponse.success("Search results",
                 productServiceImpl.search(keyword)));
+    }
+
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ApiResponse<UploadResponse>> uploadProducts(
+            @RequestParam("file") MultipartFile file) {
+        logger.info("Request received to upload product excel file.");
+        UploadResponse response = productBulkUploadService.uploadExcel(file);
+
+        return ResponseEntity
+                .status(HttpStatus.ACCEPTED)   // 202
+                .body(ApiResponse.success("File accepted for processing", response));
+    }
+
+    @GetMapping(value = {"/bulk-upload/status/{jobId}", "/upload/status/{jobId}"})
+    public ResponseEntity<ApiResponse<JobStatusResponse>> getUploadStatus(@PathVariable String jobId) {
+        logger.info("Request received to get product bulk upload status for jobId: {}.", jobId);
+        JobStatusResponse response = productBulkUploadService.getJobStatus(jobId);
+        return ResponseEntity.ok(ApiResponse.success("Job status fetched successfully", response));
+    }
+
+    @GetMapping(value = {"/bulk-upload/failed-rows/{jobId}", "/upload/failed-rows/{jobId}"})
+    public ResponseEntity<ApiResponse<List<RowError>>> getFailedRows(@PathVariable String jobId) {
+        logger.info("Request received to get product failed rows for jobId: {}.", jobId);
+        List<RowError> failedRows = productBulkUploadService.getFailedRows(jobId);
+        return ResponseEntity.ok(ApiResponse.success("Failed rows fetched successfully", failedRows));
     }
 }
