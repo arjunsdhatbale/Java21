@@ -15,7 +15,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-@CrossOrigin(origins = "*")
 @RestController
 @RequestMapping("/api/v1/users")
 @RequiredArgsConstructor
@@ -38,7 +37,7 @@ public class UserController {
     }
 
     @GetMapping
-    @CursorPaginated(defaultSize = 2, sortField = "createdAt", sortDir = "DESC")
+    @CursorPaginated(defaultSize = 50, sortField = "createdAt", sortDir = "DESC")
     public ResponseEntity<ApiResponse<List<UserResponseDto>>> getAllUsers() throws Throwable {
         logger.info("Request received to get all users.");
         return ResponseEntity.ok(ApiResponse.success("Users fetched successfully", userService.getAllUsers()));
