@@ -1,7 +1,11 @@
 package com.main.controller;
 
+import com.main.model.dto.JobStatusResponse;
+import com.main.model.dto.RowError;
+import com.main.model.dto.UploadResponse;
 import com.main.model.dto.UserRequestDto;
 import com.main.model.dto.UserResponseDto;
+import com.main.service.UserBulkUploadService;
 import com.main.service.UserService;
 import com.main.service.UserServiceImpl;
 import com.main.shared.pagination.annotation.CursorPaginated;
@@ -25,6 +29,7 @@ public class UserController {
     Logger logger = LoggerFactory.getLogger(UserController.class);
     private final UserService userService;
     private final UserServiceImpl userServiceImpl;
+    private final UserBulkUploadService userBulkUploadService;
     @PostMapping
     public ResponseEntity<ApiResponse<UserResponseDto>> createUser(@Valid @RequestBody UserRequestDto dto) {
         logger.info("Request received to create user.");
@@ -74,5 +79,19 @@ public class UserController {
                 .status(HttpStatus.ACCEPTED)   // 202
                 .body(ApiResponse.success("File accepted for processing", response));
 
+    }
+
+    @GetMapping(value = {"/bulk-upload/status/{jobId}", "/upload/status/{jobId}"})
+    public ResponseEntity<ApiResponse<JobStatusResponse>> getUploadStatus(@PathVariable String jobId) {
+        logger.info("Request received to get bulk upload status for jobId: {}.", jobId);
+        JobStatusResponse response = userBulkUploadService.getJobStatus(jobId);
+        return ResponseEntity.ok(ApiResponse.success("Job status fetched successfully", response));
+    }
+
+    @GetMapping(value = {"/bulk-upload/failed-rows/{jobId}", "/upload/failed-rows/{jobId}"})
+    public ResponseEntity<ApiResponse<List<RowError>>> getFailedRows(@PathVariable String jobId) {
+        logger.info("Request received to get failed rows for jobId: {}.", jobId);
+        List<RowError> failedRows = userBulkUploadService.getFailedRows(jobId);
+        return ResponseEntity.ok(ApiResponse.success("Failed rows fetched successfully", failedRows));
     }
 }

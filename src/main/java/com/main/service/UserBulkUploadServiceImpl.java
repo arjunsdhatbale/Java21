@@ -70,7 +70,7 @@ public class UserBulkUploadServiceImpl implements UserBulkUploadService {
         return UploadResponse.builder()
                 .jobId(jobId)
                 .message("Upload accepted. Processing has started.")
-                .statusUrl("/api/users/bulk-upload/status/" + jobId)
+                .statusUrl("/api/v1/users/bulk-upload/status/" + jobId)
                 .build();
     }
 
