@@ -15,7 +15,15 @@ public class NotificationController {
     @MessageMapping("/send-message")
     @SendTo("/topic/notification")
     public String sendMessage(String message){
-        logger.info("Request received to send notification.");
+        logger.info("Request received to send notification: {}", message);
+        return message;
+    }
+
+    // /app/chat
+    @MessageMapping("/chat")
+    @SendTo("/topic/notification")
+    public String sendChatMessage(String message){
+        logger.info("Request received for chat message: {}", message);
         return message;
     }
 }
