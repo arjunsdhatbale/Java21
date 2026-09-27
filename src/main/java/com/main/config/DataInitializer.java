@@ -1,7 +1,15 @@
 package com.main.config;
 
+import com.main.model.entity.Order;
+import com.main.model.entity.OrderItem;
+import com.main.model.entity.OrderStatus;
+import com.main.model.entity.Payment;
+import com.main.model.entity.PaymentMethod;
+import com.main.model.entity.PaymentStatus;
 import com.main.model.entity.Product;
 import com.main.model.entity.User;
+import com.main.repo.OrderRepository;
+import com.main.repo.PaymentRepository;
 import com.main.repo.ProductRepository;
 import com.main.repo.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +18,8 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Component
@@ -19,11 +29,14 @@ public class DataInitializer implements CommandLineRunner {
 
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
+    private final OrderRepository orderRepository;
+    private final PaymentRepository paymentRepository;
 
     @Override
     public void run(String... args) {
         seedUsers();
         seedProducts();
+        seedOrders();
     }
 
     private void seedUsers() {
@@ -142,6 +155,78 @@ public class DataInitializer implements CommandLineRunner {
             );
             productRepository.saveAll(initialProducts);
             log.info("Seeded {} products successfully.", initialProducts.size());
+        }
+    }
+
+    private void seedOrders() {
+        if (orderRepository.count() == 0) {
+            log.info("Seeding initial orders into database...");
+            List<User> users = userRepository.findAll();
+            List<Product> products = productRepository.findAll();
+
+            if (!users.isEmpty() && products.size() >= 2) {
+                User user = users.get(0);
+                Product p1 = products.get(0);
+                Product p2 = products.get(1);
+
+                BigDecimal amount1 = p1.getPrice().multiply(BigDecimal.valueOf(1));
+                BigDecimal amount2 = p2.getPrice().multiply(BigDecimal.valueOf(2));
+                BigDecimal total = amount1.add(amount2);
+
+                Order order1 = Order.builder()
+                        .orderNumber("ORD-20260928-1001")
+                        .user(user)
+                        .status(OrderStatus.CONFIRMED)
+                        .totalAmount(total)
+                        .shippingAddress("123 Tech Park, Phase 1, Bangalore, Karnataka - 560100")
+                        .contactPhone("9876543210")
+                        .paymentMethod("UPI")
+                        .paymentStatus(PaymentStatus.PAID)
+                        .notes("Please call before delivery")
+                        .items(new ArrayList<>())
+                        .build();
+
+                OrderItem item1 = OrderItem.builder()
+                        .order(order1)
+                        .product(p1)
+                        .productName(p1.getName())
+                        .productPrice(p1.getPrice())
+                        .quantity(1)
+                        .subtotal(amount1)
+                        .build();
+
+                OrderItem item2 = OrderItem.builder()
+                        .order(order1)
+                        .product(p2)
+                        .productName(p2.getName())
+                        .productPrice(p2.getPrice())
+                        .quantity(2)
+                        .subtotal(amount2)
+                        .build();
+
+                order1.addItem(item1);
+                order1.addItem(item2);
+                Order savedOrder = orderRepository.save(order1);
+                log.info("Seeded initial order successfully: {}", savedOrder.getOrderNumber());
+
+                if (paymentRepository.count() == 0) {
+                    Payment payment1 = Payment.builder()
+                            .transactionId("TXN-20260928-1001")
+                            .order(savedOrder)
+                            .user(user)
+                            .amount(total)
+                            .currency("INR")
+                            .paymentMethod(PaymentMethod.UPI)
+                            .paymentStatus(PaymentStatus.PAID)
+                            .gatewayReference("GW-UPI-SUCCESS-9912")
+                            .paymentDate(LocalDateTime.now())
+                            .notes("Initial seeded payment via UPI")
+                            .build();
+
+                    paymentRepository.save(payment1);
+                    log.info("Seeded initial payment successfully: {}", payment1.getTransactionId());
+                }
+            }
         }
     }
 }

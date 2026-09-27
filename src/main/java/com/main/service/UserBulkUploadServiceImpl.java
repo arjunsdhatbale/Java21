@@ -41,19 +41,32 @@ public class UserBulkUploadServiceImpl implements UserBulkUploadService {
     // Injecting the interface (not the concrete class) back into itself gets us
     // the proxied bean instead, so @Async actually takes effect.
     private final UserBulkUploadService userBulkUploadService;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     public UserBulkUploadServiceImpl(JobTracker jobTracker,
                                      UserBulkRepository userBulkRepository,
                                      Validator validator,
-                                   //  PasswordEncoder passwordEncoder,
                                      TransactionTemplate transactionTemplate,
                                      @Lazy UserBulkUploadService userBulkUploadService) {
+        this(jobTracker, userBulkRepository, validator, transactionTemplate, userBulkUploadService, null, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public UserBulkUploadServiceImpl(JobTracker jobTracker,
+                                     UserBulkRepository userBulkRepository,
+                                     Validator validator,
+                                     TransactionTemplate transactionTemplate,
+                                     @Lazy UserBulkUploadService userBulkUploadService,
+                                     NotificationService notificationService,
+                                     EmailService emailService) {
         this.jobTracker = jobTracker;
         this.userBulkRepository = userBulkRepository;
         this.validator = validator;
-       // this.passwordEncoder = passwordEncoder;
         this.transactionTemplate = transactionTemplate;
         this.userBulkUploadService = userBulkUploadService;
+        this.notificationService = notificationService;
+        this.emailService = emailService;
     }
 
     @Override
@@ -90,6 +103,10 @@ public class UserBulkUploadServiceImpl implements UserBulkUploadService {
         JobState job = jobTracker.get(jobId);
         job.markStarted();
 
+        if (notificationService != null) {
+            notificationService.sendJobUpdate(jobId, null, jobTracker.toResponse(jobId));
+        }
+
         // Emails already inserted from earlier batches in *this* file, so we
         // catch duplicates that span batches, not just duplicates within one
         // batch of 1000.
@@ -99,9 +116,28 @@ public class UserBulkUploadServiceImpl implements UserBulkUploadService {
             ExcelStreamProcessor.process(stagedFile,
                     batch -> processBatch(job, batch, emailsSeenInFile));
             job.markCompleted();
+
+            if (notificationService != null) {
+                notificationService.sendJobUpdate(jobId, null, jobTracker.toResponse(jobId));
+                notificationService.broadcast(NotificationDto.of(
+                        null,
+                        "Bulk Upload Completed",
+                        String.format("User bulk upload %s completed: %d success, %d failed.",
+                                jobId, job.getSuccessfulRows(), job.getFailedRows().size()),
+                        NotificationType.BULK_UPLOAD
+                ));
+            }
+            if (emailService != null) {
+                emailService.sendBulkUploadSummaryEmail("admin@demoapp.com", jobId, "Users",
+                        job.getTotalRows(), job.getSuccessfulRows(), job.getFailedRows().size(), job.getFailedRows());
+            }
         } catch (Exception ex) {
             log.error("Bulk upload job {} failed", jobId, ex);
             job.markFailed("Processing failed: " + ex.getMessage());
+
+            if (notificationService != null) {
+                notificationService.sendJobUpdate(jobId, null, jobTracker.toResponse(jobId));
+            }
         } finally {
             deleteQuietly(stagedFile);
         }

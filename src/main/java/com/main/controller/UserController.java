@@ -5,6 +5,9 @@ import com.main.model.dto.RowError;
 import com.main.model.dto.UploadResponse;
 import com.main.model.dto.UserRequestDto;
 import com.main.model.dto.UserResponseDto;
+import com.main.model.dto.PasswordResetConfirmDto;
+import com.main.model.dto.PasswordResetRequestDto;
+import com.main.service.PasswordResetService;
 import com.main.service.UserBulkUploadService;
 import com.main.service.UserService;
 import com.main.service.UserServiceImpl;
@@ -30,11 +33,31 @@ public class UserController {
     private final UserService userService;
     private final UserServiceImpl userServiceImpl;
     private final UserBulkUploadService userBulkUploadService;
+    private final PasswordResetService passwordResetService;
+    private final com.main.service.EmailService emailService;
+
     @PostMapping
     public ResponseEntity<ApiResponse<UserResponseDto>> createUser(@Valid @RequestBody UserRequestDto dto) {
         logger.info("Request received to create user.");
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(ApiResponse.success("User created successfully", userService.createUser(dto)));
+    }
+
+    /**
+     * Re-send the onboarding welcome email with user profile details
+     */
+    @PostMapping("/{id}/resend-welcome-email")
+    public ResponseEntity<ApiResponse<String>> resendWelcomeEmail(@PathVariable Long id) {
+        logger.info("Request received to resend welcome email for user id: {}", id);
+        UserResponseDto user = userService.getUserById(id);
+        emailService.sendWelcomeEmail(
+                user.getEmail(),
+                user.getFirstName(),
+                user.getLastName(),
+                user.getPhone(),
+                user.getRole() != null ? user.getRole() : "USER"
+        );
+        return ResponseEntity.ok(ApiResponse.success("Welcome email queued for delivery to " + user.getEmail(), user.getEmail()));
     }
 
     @GetMapping("/{id}")
@@ -94,4 +117,19 @@ public class UserController {
         List<RowError> failedRows = userBulkUploadService.getFailedRows(jobId);
         return ResponseEntity.ok(ApiResponse.success("Failed rows fetched successfully", failedRows));
     }
+
+    @PostMapping("/password-reset/request")
+    public ResponseEntity<ApiResponse<String>> requestPasswordReset(@Valid @RequestBody PasswordResetRequestDto dto) {
+        logger.info("Request received to initiate password reset for: {}", dto.getEmail());
+        String message = passwordResetService.requestPasswordReset(dto.getEmail());
+        return ResponseEntity.ok(ApiResponse.success(message, message));
+    }
+
+    @PostMapping("/password-reset/confirm")
+    public ResponseEntity<ApiResponse<String>> confirmPasswordReset(@Valid @RequestBody PasswordResetConfirmDto dto) {
+        logger.info("Request received to confirm password reset with token.");
+        passwordResetService.confirmPasswordReset(dto.getToken(), dto.getNewPassword());
+        return ResponseEntity.ok(ApiResponse.success("Password reset successfully. You can now log in.", null));
+    }
 }
+

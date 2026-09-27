@@ -28,17 +28,32 @@ public class ProductBulkUploadServiceImpl implements ProductBulkUploadService {
     private final Validator validator;
     private final TransactionTemplate transactionTemplate;
     private final ProductBulkUploadService productBulkUploadService;
+    private final NotificationService notificationService;
+    private final EmailService emailService;
 
     public ProductBulkUploadServiceImpl(JobTracker jobTracker,
                                         ProductBulkRepository productBulkRepository,
                                         Validator validator,
                                         TransactionTemplate transactionTemplate,
                                         @Lazy ProductBulkUploadService productBulkUploadService) {
+        this(jobTracker, productBulkRepository, validator, transactionTemplate, productBulkUploadService, null, null);
+    }
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ProductBulkUploadServiceImpl(JobTracker jobTracker,
+                                        ProductBulkRepository productBulkRepository,
+                                        Validator validator,
+                                        TransactionTemplate transactionTemplate,
+                                        @Lazy ProductBulkUploadService productBulkUploadService,
+                                        NotificationService notificationService,
+                                        EmailService emailService) {
         this.jobTracker = jobTracker;
         this.productBulkRepository = productBulkRepository;
         this.validator = validator;
         this.transactionTemplate = transactionTemplate;
         this.productBulkUploadService = productBulkUploadService;
+        this.notificationService = notificationService;
+        this.emailService = emailService;
     }
 
     @Override
@@ -74,15 +89,38 @@ public class ProductBulkUploadServiceImpl implements ProductBulkUploadService {
         JobState job = jobTracker.get(jobId);
         job.markStarted();
 
+        if (notificationService != null) {
+            notificationService.sendJobUpdate(jobId, null, jobTracker.toResponse(jobId));
+        }
+
         Set<String> namesSeenInFile = new HashSet<>();
 
         try {
             ProductExcelStreamProcessor.process(stagedFile,
                     batch -> processBatch(job, batch, namesSeenInFile));
             job.markCompleted();
+
+            if (notificationService != null) {
+                notificationService.sendJobUpdate(jobId, null, jobTracker.toResponse(jobId));
+                notificationService.broadcast(com.main.model.dto.NotificationDto.of(
+                        null,
+                        "Bulk Upload Completed",
+                        String.format("Product bulk upload %s completed: %d success, %d failed.",
+                                jobId, job.getSuccessfulRows(), job.getFailedRows().size()),
+                        com.main.model.dto.NotificationType.BULK_UPLOAD
+                ));
+            }
+            if (emailService != null) {
+                emailService.sendBulkUploadSummaryEmail("admin@demoapp.com", jobId, "Products",
+                        job.getTotalRows(), job.getSuccessfulRows(), job.getFailedRows().size(), job.getFailedRows());
+            }
         } catch (Exception ex) {
             log.error("Bulk upload job {} failed", jobId, ex);
             job.markFailed("Processing failed: " + ex.getMessage());
+
+            if (notificationService != null) {
+                notificationService.sendJobUpdate(jobId, null, jobTracker.toResponse(jobId));
+            }
         } finally {
             deleteQuietly(stagedFile);
         }

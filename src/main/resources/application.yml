@@ -8,6 +8,30 @@ spring:
   jpa:
     hibernate:
       ddl-auto: update
+  mail:
+    host: ${SPRING_MAIL_HOST:smtp.gmail.com}
+    port: ${SPRING_MAIL_PORT:587}
+    username: ${SPRING_MAIL_USERNAME:your-email@gmail.com}
+    password: ${SPRING_MAIL_PASSWORD:your-app-password}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: false
+    default-encoding: UTF-8
+
+app:
+  notification:
+    enabled: ${APP_NOTIFICATION_ENABLED:true}
+    email:
+      enabled: ${APP_MAIL_ENABLED:${app.notification.enabled:true}}
+      from: ${APP_MAIL_FROM:${spring.mail.username:noreply@demoapp.com}}
+      app-url: ${APP_URL:http://localhost:8082}
+    sms:
+      enabled: ${APP_SMS_ENABLED:false}
+      provider: ${APP_SMS_PROVIDER:mock}
 
 management:
   endpoints:

@@ -39,6 +39,9 @@ class UserBulkUploadControllerTest {
     @Mock
     private UserBulkUploadService userBulkUploadService;
 
+    @Mock
+    private com.main.service.PasswordResetService passwordResetService;
+
     @InjectMocks
     private UserController userController;
 

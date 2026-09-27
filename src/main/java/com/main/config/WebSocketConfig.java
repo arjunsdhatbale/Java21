@@ -12,19 +12,24 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry config) {
-//        WebSocketMessageBrokerConfigurer.super.configureMessageBroker(registry);
-        config.enableSimpleBroker("/topic");
-        // /topic/user
-        // /topic/order
+        // Enable both broadcast (/topic) and user-specific (/queue) brokers
+        config.enableSimpleBroker("/topic", "/queue");
         config.setApplicationDestinationPrefixes("/app");
-        // /app/<url>
-
+        // Prefix used by @SendToUser and SimpMessagingTemplate.convertAndSendToUser
+        config.setUserDestinationPrefix("/user");
     }
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        // SockJS endpoint with custom handshake handler to associate Principal username
         registry.addEndpoint("/ws")
+                .setHandshakeHandler(new CustomHandshakeHandler())
                 .setAllowedOriginPatterns("*")
                 .withSockJS();
+
+        // Standard WebSocket endpoint (without SockJS)
+        registry.addEndpoint("/ws-raw")
+                .setHandshakeHandler(new CustomHandshakeHandler())
+                .setAllowedOriginPatterns("*");
     }
 }

@@ -23,8 +23,9 @@ public class UserServiceImpl implements UserService, SearchService<UserResponseD
     private final UserRepository userRepository;
     private final UserMapper userMapper;
     private final CursorQueryHelper cursorQueryHelper;
-
-
+    private final EmailService emailService;
+    private final SmsService smsService;
+    private final NotificationService notificationService;
 
     @Override
     public UserResponseDto createUser(UserRequestDto dto) {
@@ -33,7 +34,31 @@ public class UserServiceImpl implements UserService, SearchService<UserResponseD
         }
         User user = userMapper.toEntity(dto);
         user.setPassword(dto.getPassword());
-        return userMapper.toDto(userRepository.save(user));
+        User savedUser = userRepository.save(user);
+
+        // Async welcome email & SMS notification with complete user profile
+        String roleStr = savedUser.getRole() != null ? savedUser.getRole().name() : "USER";
+        emailService.sendWelcomeEmail(
+                savedUser.getEmail(),
+                savedUser.getFirstName(),
+                savedUser.getLastName(),
+                savedUser.getPhone(),
+                roleStr
+        );
+        if (savedUser.getPhone() != null && !savedUser.getPhone().trim().isEmpty()) {
+            smsService.sendSms(savedUser.getPhone(), "Welcome to Java21 Project, " + savedUser.getFirstName() + "!");
+        }
+
+        // WebSocket notification
+        notificationService.sendToUser(savedUser.getEmail(),
+                com.main.model.dto.NotificationDto.of(
+                        savedUser.getEmail(),
+                        "Welcome to Java21 Project",
+                        "You have been added to my Java21 project! Your account has been registered successfully.",
+                        com.main.model.dto.NotificationType.WELCOME
+                ));
+
+        return userMapper.toDto(savedUser);
     }
 
     @Override
