@@ -1,0 +1,11 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="java 21" type="Application" factoryName="Application">
+    <envs>
+      <env name="spring.profile.ative" value="microservice" />
+    </envs>
+    <module name="Demo" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
