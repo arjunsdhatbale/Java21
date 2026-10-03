@@ -2,15 +2,18 @@ package com.main.config;
 
 import com.main.security.jwt.JwtAuthenticationFilter;
 import com.main.security.oauth2.CustomOAuth2UserService;
+import com.main.security.oauth2.OAuth2AuthenticationFailureHandler;
 import com.main.security.oauth2.OAuth2AuthenticationSuccessHandler;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.userdetails.User;
@@ -24,12 +27,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 @Configuration
 @EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true)
 @RequiredArgsConstructor
 public class SecurityConfig {
 
     private final CustomOAuth2UserService customOAuth2UserService;
     private final OAuth2AuthenticationSuccessHandler oauth2SuccessHandler;
-    private final com.main.security.oauth2.OAuth2AuthenticationFailureHandler oauth2FailureHandler;
+    private final OAuth2AuthenticationFailureHandler oauth2FailureHandler;
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
 
     @Value("${spring.security.user.name:user}")
@@ -68,7 +72,7 @@ public class SecurityConfig {
             // Pure REST API - Disable HTML Form Login and Default Logout Filter
             .formLogin(form -> form.disable())
             .logout(logout -> logout.disable())
-            // Return JSON 401 instead of redirecting to HTML login page
+            // Return JSON 401/403 instead of redirecting to HTML login page
             .exceptionHandling(ex -> ex
                 .authenticationEntryPoint((request, response, authException) -> {
                     response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
@@ -78,9 +82,17 @@ public class SecurityConfig {
                         {"success":false,"message":"Unauthorized - authentication required","data":null}
                         """);
                 })
+                .accessDeniedHandler((request, response, accessDeniedException) -> {
+                    response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                    response.setContentType("application/json");
+                    response.setCharacterEncoding("UTF-8");
+                    response.getWriter().write("""
+                        {"success":false,"message":"Access Denied: You do not have permission to access this resource (ADMIN role required)","data":null}
+                        """);
+                })
             )
             .authorizeHttpRequests(auth -> auth
-                // Allow REST Auth endpoints (login, logout, me)
+                // Allow REST Auth endpoints (login, logout, me, signup, register)
                 .requestMatchers("/api/v1/auth/**").permitAll()
                 // Allow OAuth2 authorization endpoints and redirects
                 .requestMatchers("/oauth2/**", "/login/oauth2/**").permitAll()
@@ -88,8 +100,27 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html", "/actuator/**").permitAll()
                 // Allow WebSocket endpoints & interactive tester
                 .requestMatchers("/ws/**", "/ws-notifications/**", "/websocket-test.html").permitAll()
-                // Keep business REST APIs accessible for the Angular frontend & external clients
-                .requestMatchers("/api/**").permitAll()
+                // Public user password reset endpoints
+                .requestMatchers("/api/v1/users/password-reset/**").permitAll()
+
+                // ── ADMIN ONLY ACCESS ─────────────────────────────────────────
+                // Users management & User bulk upload: ADMIN ONLY
+                .requestMatchers("/api/v1/users/**").hasRole("ADMIN")
+                // Products mutation: Adding, Updating, Deleting, and Bulk Upload: ADMIN ONLY
+                .requestMatchers(HttpMethod.POST, "/api/v1/products/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/v1/products/**").hasRole("ADMIN")
+                .requestMatchers(HttpMethod.DELETE, "/api/v1/products/**").hasRole("ADMIN")
+
+                // ── AUTHENTICATED ACCESS (USER and ADMIN) ─────────────────────
+                // Products browsing and search: Authenticated users can view
+                .requestMatchers(HttpMethod.GET, "/api/v1/products/**").authenticated()
+                // Orders & Storefront checkout
+                .requestMatchers("/api/v1/orders/**").authenticated()
+                // Payments
+                .requestMatchers("/api/v1/payments/**").authenticated()
+                // Notifications
+                .requestMatchers("/api/v1/notifications/**").authenticated()
+
                 // Any other request requires authentication
                 .anyRequest().authenticated()
             )

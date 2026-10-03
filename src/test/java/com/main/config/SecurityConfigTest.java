@@ -14,9 +14,13 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.main.security.jwt.JwtTokenProvider;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import java.util.List;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -34,9 +38,16 @@ class SecurityConfigTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private JwtTokenProvider tokenProvider;
+
     @BeforeEach
     void setUp() {
-        if (!userRepository.existsByEmail("testuser@example.com")) {
+        userRepository.findByEmail("testuser@example.com").ifPresentOrElse(u -> {
+            u.setStatus(User.UserStatus.ACTIVE);
+            u.setPassword(passwordEncoder.encode("SecurePass123"));
+            userRepository.save(u);
+        }, () -> {
             User user = User.builder()
                     .firstName("Test")
                     .lastName("User")
@@ -48,7 +59,7 @@ class SecurityConfigTest {
                     .provider(User.AuthProvider.LOCAL)
                     .build();
             userRepository.save(user);
-        }
+        });
     }
 
     @Test
@@ -122,5 +133,50 @@ class SecurityConfigTest {
         mockMvc.perform(post("/api/v1/auth/logout"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void testUserRole_cannotAccessUsersEndpoint_returnsForbidden() throws Exception {
+        String userToken = tokenProvider.generateToken("testuser@example.com", List.of("ROLE_USER"), "testuser@example.com");
+
+        mockMvc.perform(get("/api/v1/users")
+                        .header("Authorization", "Bearer " + userToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Access Denied")));
+    }
+
+    @Test
+    void testUserRole_cannotCreateProduct_returnsForbidden() throws Exception {
+        String userToken = tokenProvider.generateToken("testuser@example.com", List.of("ROLE_USER"), "testuser@example.com");
+
+        String dummyProductJson = """
+            {"name":"Hacked Product","description":"Not allowed","price":100,"stock":5,"category":"Electronics"}
+            """;
+
+        mockMvc.perform(post("/api/v1/products")
+                        .header("Authorization", "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(dummyProductJson))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.success").value(false))
+                .andExpect(jsonPath("$.message").value(org.hamcrest.Matchers.containsString("Access Denied")));
+    }
+
+    @Test
+    void testAdminRole_canAccessUsersEndpoint_succeeds() throws Exception {
+        String adminToken = tokenProvider.generateToken("arjun@example.com", List.of("ROLE_ADMIN"), "arjun@example.com");
+
+        mockMvc.perform(get("/api/v1/users")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true));
+    }
+
+    @Test
+    void testUnauthenticated_cannotAccessUsersEndpoint_returnsUnauthorized() throws Exception {
+        mockMvc.perform(get("/api/v1/users"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.success").value(false));
     }
 }

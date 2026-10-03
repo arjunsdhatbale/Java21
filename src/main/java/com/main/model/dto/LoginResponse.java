@@ -13,7 +13,11 @@ import java.util.List;
 @AllArgsConstructor
 public class LoginResponse {
 
+    private Long userId;
     private String username;
+    private String firstName;
+    private String lastName;
+    private String email;
     private List<String> roles;
     private String token;
     private boolean authenticated;

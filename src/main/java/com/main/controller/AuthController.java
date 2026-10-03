@@ -138,7 +138,7 @@ public class AuthController {
 
         User user = userOpt.get();
 
-        if (user.getStatus() != User.UserStatus.ACTIVE) {
+        if (user.getStatus() != null && user.getStatus() != User.UserStatus.ACTIVE) {
             log.warn("Login rejected: User [{}] is in status: {}", user.getEmail(), user.getStatus());
             return ResponseEntity.status(HttpStatus.FORBIDDEN)
                     .body(ApiResponse.error("Your account is " + user.getStatus() + ". Please contact administrator.", "Account disabled"));
@@ -170,13 +170,17 @@ public class AuthController {
         session.setAttribute(HttpSessionSecurityContextRepository.SPRING_SECURITY_CONTEXT_KEY, context);
 
         LoginResponse responseData = LoginResponse.builder()
-                .username(user.getFirstName() + " " + user.getLastName())
+                .userId(user.getId())
+                .username(user.getEmail())
+                .firstName(user.getFirstName())
+                .lastName(user.getLastName())
+                .email(user.getEmail())
                 .roles(roles)
                 .token(jwtToken)
                 .authenticated(true)
                 .build();
 
-        log.info("Login successful for user: [{}] ({}) with role: {}", user.getEmail(), responseData.getUsername(), role);
+        log.info("Login successful for user: [{}] ({}) with role: {}", user.getEmail(), user.getFirstName() + " " + user.getLastName(), role);
         return ResponseEntity.ok(ApiResponse.success("Login successful", responseData));
     }
 
@@ -216,8 +220,14 @@ public class AuthController {
                 .map(GrantedAuthority::getAuthority)
                 .toList();
 
+        User dbUser = userRepository.findByEmail(authentication.getName()).orElse(null);
+
         LoginResponse response = LoginResponse.builder()
+                .userId(dbUser != null ? dbUser.getId() : null)
                 .username(authentication.getName())
+                .firstName(dbUser != null ? dbUser.getFirstName() : null)
+                .lastName(dbUser != null ? dbUser.getLastName() : null)
+                .email(dbUser != null ? dbUser.getEmail() : authentication.getName())
                 .roles(roles)
                 .authenticated(true)
                 .build();
