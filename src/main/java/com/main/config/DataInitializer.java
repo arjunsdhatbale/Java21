@@ -87,6 +87,15 @@ public class DataInitializer implements CommandLineRunner {
                             .phone("9157055501")
                             .role(User.UserRole.USER)
                             .status(User.UserStatus.BLOCKED)
+                            .build(),
+                    User.builder()
+                            .firstName("Demo")
+                            .lastName("User")
+                            .email("user@example.com")
+                            .password("password")
+                            .phone("9998887770")
+                            .role(User.UserRole.USER)
+                            .status(User.UserStatus.ACTIVE)
                             .build()
             );
             userRepository.saveAll(initialUsers);
