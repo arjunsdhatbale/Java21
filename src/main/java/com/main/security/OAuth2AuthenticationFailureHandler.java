@@ -5,6 +5,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -27,9 +29,22 @@ public class OAuth2AuthenticationFailureHandler extends SimpleUrlAuthenticationF
 
         log.warn("OAuth2 Authentication failed: {}", exception.getMessage());
 
+        // Determine specific error code
+        String errorCode = "oauth2_error";
+        if (exception instanceof OAuth2AuthenticationException oauthEx) {
+            OAuth2Error oauthError = oauthEx.getError();
+            if (oauthError != null) {
+                errorCode = oauthError.getErrorCode(); // e.g. "user_not_registered", "account_disabled"
+            }
+        }
+
+        String safeMessage = exception.getMessage() != null
+                ? URLEncoder.encode(exception.getMessage(), StandardCharsets.UTF_8)
+                : URLEncoder.encode("OAuth2 authentication failed.", StandardCharsets.UTF_8);
+
         String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
-                .queryParam("error", "not_registered")
-                .queryParam("message", URLEncoder.encode(exception.getMessage(), StandardCharsets.UTF_8))
+                .queryParam("error", errorCode)
+                .queryParam("message", safeMessage)
                 .build().toUriString();
 
         getRedirectStrategy().sendRedirect(request, response, targetUrl);

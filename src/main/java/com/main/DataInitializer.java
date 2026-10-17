@@ -15,6 +15,7 @@ import com.main.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -31,6 +32,7 @@ public class DataInitializer implements CommandLineRunner {
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     private final PaymentRepository paymentRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public void run(String... args) {
@@ -47,7 +49,7 @@ public class DataInitializer implements CommandLineRunner {
                             .firstName("Arjun")
                             .lastName("Dhatbale")
                             .email("arjun@example.com")
-                            .password("Password123")
+                            .password(passwordEncoder.encode("Password123"))
                             .phone("9876543210")
                             .role(User.UserRole.ADMIN)
                             .status(User.UserStatus.ACTIVE)
@@ -56,7 +58,7 @@ public class DataInitializer implements CommandLineRunner {
                             .firstName("Sarah")
                             .lastName("Connor")
                             .email("sarah.connor@example.com")
-                            .password("Password123")
+                            .password(passwordEncoder.encode("Password123"))
                             .phone("9141555267")
                             .role(User.UserRole.MANAGER)
                             .status(User.UserStatus.ACTIVE)
@@ -65,7 +67,7 @@ public class DataInitializer implements CommandLineRunner {
                             .firstName("John")
                             .lastName("Doe")
                             .email("john.doe@example.com")
-                            .password("Password123")
+                            .password(passwordEncoder.encode("Password123"))
                             .phone("9120255501")
                             .role(User.UserRole.USER)
                             .status(User.UserStatus.INACTIVE)
@@ -74,7 +76,7 @@ public class DataInitializer implements CommandLineRunner {
                             .firstName("Priya")
                             .lastName("Sharma")
                             .email("priya.sharma@example.com")
-                            .password("Password123")
+                            .password(passwordEncoder.encode("Password123"))
                             .phone("9123456780")
                             .role(User.UserRole.MANAGER)
                             .status(User.UserStatus.ACTIVE)
@@ -83,7 +85,7 @@ public class DataInitializer implements CommandLineRunner {
                             .firstName("Michael")
                             .lastName("Scott")
                             .email("michael.scott@example.com")
-                            .password("Password123")
+                            .password(passwordEncoder.encode("Password123"))
                             .phone("9157055501")
                             .role(User.UserRole.USER)
                             .status(User.UserStatus.BLOCKED)
@@ -92,14 +94,14 @@ public class DataInitializer implements CommandLineRunner {
                             .firstName("Demo")
                             .lastName("User")
                             .email("user@example.com")
-                            .password("password")
+                            .password(passwordEncoder.encode("password"))
                             .phone("9998887770")
                             .role(User.UserRole.USER)
                             .status(User.UserStatus.ACTIVE)
                             .build()
             );
             userRepository.saveAll(initialUsers);
-            log.info("Seeded {} users successfully.", initialUsers.size());
+            log.info("Seeded {} users successfully with BCrypt-encoded passwords.", initialUsers.size());
         }
     }
 

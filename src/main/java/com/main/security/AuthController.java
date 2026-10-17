@@ -6,8 +6,10 @@ import com.main.user.User;
 import com.main.user.UserRepository;
 import com.main.user.UserResponseDto;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import jakarta.validation.Valid;
+import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -229,6 +231,18 @@ public class AuthController {
                 .build();
 
         return ResponseEntity.ok(ApiResponse.success("Authenticated user profile retrieved", response));
+    }
+
+    /**
+     * Initiates Google OAuth2 specifically in SIGNUP mode.
+     * Sets session attribute so OAuth2AuthenticationSuccessHandler knows to create a new user.
+     */
+    @GetMapping("/google/signup")
+    public void googleSignup(HttpServletRequest request, HttpServletResponse response) throws IOException {
+        HttpSession session = request.getSession(true);
+        session.setAttribute("oauth2_mode", "signup");
+        log.info("OAuth2 SIGNUP flow initiated by user. Session attribute 'oauth2_mode' set to 'signup'.");
+        response.sendRedirect("/oauth2/authorization/google");
     }
 
     private boolean passwordMatches(String rawPassword, String storedPassword) {
