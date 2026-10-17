@@ -31,7 +31,10 @@ public class CursorQueryHelper {
             Class<T> entityClass,
             Function<CriteriaBuilder, List<Predicate>> predicatesFn
     ) throws Throwable {
-        CursorPageRequest req  = CursorContext.get();
+        CursorPageRequest req = CursorContext.get();
+        if (req == null) {
+            req = new CursorPageRequest(null, 50, "createdAt", "DESC");
+        }
         CriteriaBuilder   cb   = em.getCriteriaBuilder();
         CriteriaQuery<T> cq   = cb.createQuery(entityClass);
         Root<T> root = cq.from(entityClass);
@@ -46,7 +49,7 @@ public class CursorQueryHelper {
 
         // Apply caller-supplied business predicates
         if (predicatesFn != null) {
-            predicates.addAll(predicatesFn.apply((CriteriaBuilder) root));
+            predicates.addAll(predicatesFn.apply(cb));
         }
 
         if (!predicates.isEmpty()) {
@@ -54,7 +57,7 @@ public class CursorQueryHelper {
         }
 
         // Order by sortField, then id (tie-breaker for stable pagination)
-        cq.orderBy((Order) buildOrder(cb, root, req));
+        cq.orderBy(buildOrder(cb, root, req));
 
         return em.createQuery(cq)
                 .setMaxResults(req.size())
